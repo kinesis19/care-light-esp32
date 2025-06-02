@@ -5,7 +5,9 @@
 #include <PulseSensorPlayground.h>
 
 // Wi-Fi 설정
-const char* ssid = "융합씽킹랩 2";
+const char* ssid = "Akashic";
+const char* passwd = "microsoft";
+// const char* ssid = "iptime";
 
 // LED 설정
 #ifndef LED_BUILTIN
@@ -113,7 +115,8 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  WiFi.begin(ssid);
+  // WiFi.begin(ssid); // public network일 때
+  WiFi.begin(ssid, passwd); // private network일 때
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) {
