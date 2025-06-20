@@ -52,6 +52,9 @@ int currentBPM = 0;
 
 WebServer server(80);
 
+// 작업 중복 실행을 막기 위한 전역 변수
+bool g_isTaskRunning = false;
+
 struct DirectPosition {
   int baseAngle;
   int shoulderAngle;
@@ -153,125 +156,131 @@ void smoothMoveToDirectPosition(DirectPosition startPos, DirectPosition endPos, 
 
 // ========== 메니퓰레이터 책상 청소 루틴 함수 ==========
 void runDeskCleaningRoutine() {
-  server.send(200, "text/plain", "Desk cleaning routine started.");
+  if (g_isTaskRunning) {
+    server.send(200, "text/plain", "다른 작업이 이미 실행 중입니다. 완료될 때까지 기다려 주세요.");
+    return;
+  }
+  g_isTaskRunning = true;
+
+  String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>작업 시작</title><meta http-equiv='refresh' content='2;url=/'>";
+  html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
+  html += "</head><body><div><h2>책상 청소 루틴을 시작합니다.</h2><p>2초 후에 메인 페이지로 돌아갑니다.</p></div></body></html>";
+  server.send(200, "text/html", html);
+
   Serial.println("\n=== 6DOF 메니퓰레이터 책상 청소 사이클 시작 ===");
-  
-  Serial.println("1. 홈 위치로 이동 중...");
   moveToDirectPosition(homePosition, 3000);
   delay(1000);
-  
-  Serial.println("2. 책상 위 걸레 위치로 부드러운 이동 중...");
   smoothMoveToDirectPosition(homePosition, clothPosition, 4000);
   delay(1000);
-  
-  Serial.println("3. 그리퍼로 걸레 잡는 중...");
   setAngleMG996(GRIPPER_SERVO, 130);
   delay(1500);
-  
-  Serial.println("4. 걸레를 집은 후 살짝 올라가는 중...");
   moveToDirectPositionWithGrip(liftPosition, 2000);
   delay(1000);
-  
-  Serial.println("5. 책상 청소 시작 위치로 이동 중...");
   moveToDirectPositionWithGrip(deskCleanStart, 3000);
   delay(1000);
-  
-  Serial.println("6. 책상 청소 동작 시작 (5번 왔다갔다)");
   for (int cleanCycle = 1; cleanCycle <= 5; cleanCycle++) {
-    Serial.printf("책상 청소 %d회차 - 왼쪽에서 오른쪽으로\n", cleanCycle);
-    for (int baseAngle = 110; baseAngle <= 160; baseAngle += 2) {
-      setAngleMG996(BASE_SERVO, baseAngle);
-      delay(50);
-    }
+    for (int baseAngle = 110; baseAngle <= 160; baseAngle += 2) { setAngleMG996(BASE_SERVO, baseAngle); delay(50); }
     delay(200);
-    
-    Serial.printf("책상 청소 %d회차 - 오른쪽에서 왼쪽으로\n", cleanCycle);
-    for (int baseAngle = 150; baseAngle >= 120; baseAngle -= 2) {
-      setAngleMG996(BASE_SERVO, baseAngle);
-      delay(50);
-    }
+    for (int baseAngle = 150; baseAngle >= 120; baseAngle -= 2) { setAngleMG996(BASE_SERVO, baseAngle); delay(50); }
     delay(200);
   }
-  
-  Serial.println("7. 청소 완료 - 살짝 올라가는 중...");
   moveToDirectPositionWithGrip(liftPosition, 2000);
   delay(1000);
-  
-  Serial.println("8. 걸레를 원래 자리로 가져가는 중...");
   smoothMoveToDirectPosition(liftPosition, clothPosition, 3000, true);
   delay(1000);
-  
-  Serial.println("9. 걸레를 책상에 놓는 중...");
   setAngleMG996(GRIPPER_SERVO, 40);
   delay(1500);
-  
-  Serial.println("10. 책상 청소 완료 - 홈 위치로 최종 복귀");
   smoothMoveToDirectPosition(clothPosition, homePosition, 4000);
   delay(2000);
-  
   Serial.println("=== 6DOF 메니퓰레이터 책상 청소 사이클 완료 ===\n");
+
+  g_isTaskRunning = false;
 }
 
 // ========== 단일 팔 제어 함수 ==========
 void moveSingleArm() {
-  server.send(200, "text/plain", "Single arm routine started.");
-  Serial.println("=== 단일 팔 동작 시작 ===");
-  Serial.println("단일 팔을 90도에서 0도로 이동 중...");
+  if (g_isTaskRunning) {
+    server.send(200, "text/plain", "다른 작업이 이미 실행 중입니다. 완료될 때까지 기다려 주세요.");
+    return;
+  }
+  g_isTaskRunning = true;
+
+  String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>작업 시작</title><meta http-equiv='refresh' content='2;url=/'>";
+  html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
+  html += "</head><body><div><h2>단일 팔 동작을 시작합니다.</h2><p>2초 후에 메인 페이지로 돌아갑니다.</p></div></body></html>";
+  server.send(200, "text/html", html);
   
+  Serial.println("=== 단일 팔 동작 시작 ===");
   setAngleMG996(SINGLE_ARM_SERVO, 90);
   delay(500);
-  
   for (int angle = 90; angle >= 1; angle -= 1) {
     setAngleMG996(SINGLE_ARM_SERVO, angle);
     delay(50);
   }
-  
   Serial.println("단일 팔 동작 완료 (90도 위치)");
   Serial.println("=== 단일 팔 동작 완료 ===\n");
   delay(1000);
+
+  g_isTaskRunning = false;
 }
 
 // ========== SG90 3개 순차 제어 함수 ==========
 void controlSG90Sequence() {
-  server.send(200, "text/plain", "Medicine dispensing routine started.");
-  Serial.println("=== SG90 순차 제어 시작 ===");
-  
-  sg90CallCount++;
-  
-  int targetServo;
-  if (sg90CallCount == 1) {
-    targetServo = SG90_SERVO_1;
-    Serial.println("첫 번째 SG90 모터 동작 (채널 7)");
-  } else if (sg90CallCount == 2) {
-    targetServo = SG90_SERVO_2;
-    Serial.println("두 번째 SG90 모터 동작 (채널 8)");
-  } else if (sg90CallCount == 3) {
-    targetServo = SG90_SERVO_3;
-    Serial.println("세 번째 SG90 모터 동작 (채널 9)");
-    sg90CallCount = 0;
-  } else {
-    sg90CallCount = 1;
-    targetServo = SG90_SERVO_1;
-    Serial.println("첫 번째 SG90 모터 동작 (채널 7) - 리셋됨");
+  if (g_isTaskRunning) {
+    server.send(200, "text/plain", "다른 작업이 이미 실행 중입니다. 완료될 때까지 기다려 주세요.");
+    return;
   }
+  g_isTaskRunning = true;
+  
+  String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>작업 시작</title><meta http-equiv='refresh' content='2;url=/'>";
+  html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
+  html += "</head><body><div><h2>약 배출을 시작합니다.</h2><p>2초 후에 메인 페이지로 돌아갑니다.</p></div></body></html>";
+  server.send(200, "text/html", html);
+
+  Serial.println("=== SG90 순차 제어 시작 ===");
+  sg90CallCount++;
+  int targetServo;
+  if (sg90CallCount > 3) sg90CallCount = 1;
+
+  if (sg90CallCount == 1) { targetServo = SG90_SERVO_1; } 
+  else if (sg90CallCount == 2) { targetServo = SG90_SERVO_2; }
+  else { targetServo = SG90_SERVO_3; }
   
   Serial.printf("SG90 채널 %d 을(를) 0도에서 90도로 이동 중...\n", targetServo);
   setAngleSG90(targetServo, 0);
   delay(500);
-  
   for (int angle = 0; angle <= 90; angle += 3) {
     setAngleSG90(targetServo, angle);
     delay(30);
   }
-  
   Serial.printf("SG90 채널 %d 동작 완료 (90도 위치)\n", targetServo);
   Serial.println("=== SG90 순차 제어 완료 ===\n");
   delay(1000);
+
+  g_isTaskRunning = false;
 }
 
 // =================================================================
-// <<< 여기부터 웹페이지 UI 관련 함수임. >>>
+// 웹페이지 UI 및 핸들러 함수
 // =================================================================
+
+// <<< 추가된 함수: 현재 BPM 값을 보여주는 페이지를 처리 >>>
+void handleGetBPM() {
+  String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>심박수 확인</title><meta http-equiv='refresh' content='4;url=/'>";
+  html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
+  html += "</head><body><div>";
+  html += "<h2>현재 심박수(BPM)</h2>";
+  if (currentBPM > 0) {
+    html += "<p style='font-size: 2.5em; color: #e74c3c; margin: 10px 0;'>" + String(currentBPM) + "</p>";
+  } else {
+    html += "<p>측정된 심박수 값이 없습니다.<br>센서에 손가락을 올바르게 올려주세요.</p>";
+  }
+  html += "<p style='font-size: 0.9em; color: #777;'>4초 후에 메인 페이지로 돌아갑니다.</p>";
+  html += "</div></body></html>";
+  server.send(200, "text/html", html);
+  Serial.println("Sent current BPM value to client: " + String(currentBPM));
+}
+
 void handleRoot() {
   String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>ESP32 로봇팔 제어</title>";
   html += "<style>";
@@ -283,26 +292,27 @@ void handleRoot() {
   html += "button { background-color: #3498db; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; width: 100%; transition: background-color 0.3s, transform 0.2s; }";
   html += "button:hover { background-color: #2980b9; transform: translateY(-2px); }";
   html += "button:active { transform: translateY(0); }";
+  // <<< 수정: BPM 버튼을 위한 스타일 추가 >>>
+  html += "button.bpm-btn { background-color: #2ecc71; }";
+  html += "button.bpm-btn:hover { background-color: #27ae60; }";
   html += ".info { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555; }";
   html += "</style>";
   html += "</head><body><div class='container'>";
   html += "<h1>ESP32 로봇팔 제어</h1>";
-  
-  // 기능 실행 버튼
   html += "<p><a href=\"/manipulator_work_cleaning\"><button>책상 청소 시작</button></a></p>";
   html += "<p><a href=\"/single_arm_cleaning\"><button>단일 팔 동작</button></a></p>";
   html += "<p><a href=\"/get_medicine\"><button>약 배출하기</button></a></p>";
-  
-  // 정보 표시
+  // <<< 수정: BPM 확인 버튼 추가 >>>
+  html += "<p><a href=\"/get_bpm\"><button class='bpm-btn'>현재 심박수 확인</button></a></p>";
   html += "<div class='info'>";
-  html += "<p>현재 BPM: " + String(currentBPM) + "</p>";
+  // <<< 수정: 안내 문구 변경 >>>
+  html += "<p>심박수(BPM)는 위 녹색 버튼을 눌러 확인해 주세요.</p>";
   html += "</div>";
-
   html += "</div></body></html>";
   server.send(200, "text/html", html);
 }
 
-// <<< LED 및 서보 제어 관련 핸들러는 더 이상 웹 UI에 노출되지 않지만, 직접 URL로 호출할 수 있도록 남겨둠. >>>
+// ... 기타 핸들러 함수들 ...
 void handleLedOn() {
   digitalWrite(LED_BUILTIN, HIGH);
   server.send(200, "text/plain", "LED is ON");
@@ -369,7 +379,6 @@ void setup() {
   pwm.setPWMFreq(50);
   delay(1000);
 
-  // 모터 초기 위치 설정
   moveToDirectPosition(homePosition, 2000);
   setAngleMG996(SINGLE_ARM_SERVO, 0);
   setAngleSG90(SG90_SERVO_1, 0);
@@ -417,12 +426,14 @@ void setup() {
     server.on("/manipulator_work_cleaning", HTTP_GET, runDeskCleaningRoutine);
     server.on("/single_arm_cleaning", HTTP_GET, moveSingleArm);
     server.on("/get_medicine", HTTP_GET, controlSG90Sequence);
+    // <<< 추가: BPM 확인 핸들러 등록 >>>
+    server.on("/get_bpm", HTTP_GET, handleGetBPM);
   
     server.begin();
     Serial.println("HTTP server started");
   } else {
     Serial.println("\nFailed to connect to WiFi.");
-  }
+  } 
 }
 
 void loop() {
