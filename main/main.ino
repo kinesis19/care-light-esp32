@@ -44,6 +44,8 @@ Servo myservo;
 const int SERVO_PIN = 17;
 int currentServoAngle = 90;
 
+int count=0; 
+
 // Pulse Sensor 설정
 const int PULSE_SENSOR_PIN = 5;
 const int PULSE_SENSOR_THRESHOLD = 550;
@@ -198,30 +200,54 @@ void runDeskCleaningRoutine() {
 }
 
 // ========== 단일 팔 제어 함수 ==========
-void moveSingleArm() {
-  if (g_isTaskRunning) {
-    server.send(200, "text/plain", "다른 작업이 이미 실행 중입니다. 완료될 때까지 기다려 주세요.");
-    return;
-  }
-  g_isTaskRunning = true;
+// void moveSingleArm() {
+//   if (g_isTaskRunning) {
+//     server.send(200, "text/plain", "다른 작업이 이미 실행 중입니다. 완료될 때까지 기다려 주세요.");
+//     return;
+//   }
+//   g_isTaskRunning = true;
 
-  String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>작업 시작</title><meta http-equiv='refresh' content='2;url=/'>";
-  html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
-  html += "</head><body><div><h2>단일 팔 동작을 시작합니다.</h2><p>2초 후에 메인 페이지로 돌아갑니다.</p></div></body></html>";
-  server.send(200, "text/html", html);
+//   String html = "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>작업 시작</title><meta http-equiv='refresh' content='2;url=/'>";
+//   html += "<style>body{font-family:sans-serif; text-align:center; padding-top: 50px; background-color: #f4f4f9;} div{display:inline-block; background:white; padding: 20px 40px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}</style>";
+//   html += "</head><body><div><h2>단일 팔 동작을 시작합니다.</h2><p>2초 후에 메인 페이지로 돌아갑니다.</p></div></body></html>";
+//   server.send(200, "text/html", html);
   
+//   Serial.println("=== 단일 팔 동작 시작 ===");
+//   setAngleMG996(SINGLE_ARM_SERVO, 90);
+//   delay(500);
+//   for (int angle = 90; angle >= 1; angle -= 1) {
+//     setAngleMG996(SINGLE_ARM_SERVO, angle);
+//     delay(50);
+//   }
+//   Serial.println("단일 팔 동작 완료 (90도 위치)");
+//   Serial.println("=== 단일 팔 동작 완료 ===\n");
+//   delay(1000);
+
+//   g_isTaskRunning = false;
+// }
+
+void moveSingleArm() {
   Serial.println("=== 단일 팔 동작 시작 ===");
+  Serial.println("단일 팔을 90도에서 0도로 이동 중...");
+  
+  count ++;
+   // 0도에서 시작
+ if(count%2==1)
+{
   setAngleMG996(SINGLE_ARM_SERVO, 90);
   delay(500);
+} 
+  // 90도로 부드럽게 이동
+   if(count%2==0)
+{
   for (int angle = 90; angle >= 1; angle -= 1) {
     setAngleMG996(SINGLE_ARM_SERVO, angle);
     delay(50);
   }
+}
   Serial.println("단일 팔 동작 완료 (90도 위치)");
   Serial.println("=== 단일 팔 동작 완료 ===\n");
   delay(1000);
-
-  g_isTaskRunning = false;
 }
 
 // ========== SG90 3개 순차 제어 함수 ==========
